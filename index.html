@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bangladesh Bus Tracking & Booking System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 100px 0;
+        }
+        .feature-card {
+            transition: transform 0.3s;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        .btn-custom {
+            background: #667eea;
+            border: none;
+            color: white;
+        }
+        .btn-custom:hover {
+            background: #764ba2;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-bus"></i> BD Bus Track
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="booking.php">Book Ticket</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="tracking.php">Track Bus</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="routes.php">Routes</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="login.php">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="register.php">Register</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section text-center">
+        <div class="container">
+            <h1 class="display-4 mb-4">Welcome to Bangladesh Bus Tracking System</h1>
+            <p class="lead mb-5">Book your bus tickets online and track your journey in real-time</p>
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <a href="booking.php" class="btn btn-light btn-lg me-3">
+                        <i class="fas fa-ticket-alt"></i> Book Now
+                    </a>
+                    <a href="tracking.php" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-map-marker-alt"></i> Track Bus
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row text-center mb-5">
+                <div class="col">
+                    <h2>Our Services</h2>
+                    <p class="text-muted">Experience the best bus travel services in Bangladesh</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card feature-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-ticket-alt fa-3x text-primary mb-3"></i>
+                            <h5 class="card-title">Easy Booking</h5>
+                            <p class="card-text">Book your bus tickets online with just a few clicks. Choose your preferred seats and pay securely.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card feature-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-map-marker-alt fa-3x text-success mb-3"></i>
+                            <h5 class="card-title">Real-time Tracking</h5>
+                            <p class="card-text">Track your bus location in real-time and get estimated arrival times for better planning.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card feature-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-route fa-3x text-warning mb-3"></i>
+                            <h5 class="card-title">Multiple Routes</h5>
+                            <p class="card-text">Choose from various routes connecting major cities across Bangladesh with comfortable buses.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Popular Routes -->
+    <section class="py-5 bg-light">
+        <div class="container">
+            <div class="row text-center mb-5">
+                <div class="col">
+                    <h2>Popular Routes</h2>
+                    <p class="text-muted">Most traveled routes in Bangladesh</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Dhaka ↔ Chittagong</h5>
+                            <p class="card-text">
+                                <i class="fas fa-clock"></i> 5h 30m | 
+                                <i class="fas fa-road"></i> 264 km | 
+                                <i class="fas fa-money-bill"></i> ৳450
+                            </p>
+                            <a href="booking.php" class="btn btn-custom">Book Now</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Dhaka ↔ Sylhet</h5>
+                            <p class="card-text">
+                                <i class="fas fa-clock"></i> 5h 00m | 
+                                <i class="fas fa-road"></i> 247 km | 
+                                <i class="fas fa-money-bill"></i> ৳400
+                            </p>
+                            <a href="booking.php" class="btn btn-custom">Book Now</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>BD Bus Track</h5>
+                    <p>Your trusted partner for bus travel in Bangladesh</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>&copy; 2024 Bangladesh Bus Tracking System. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
