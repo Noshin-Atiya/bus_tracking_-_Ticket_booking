@@ -32,9 +32,7 @@ $routes_result = $conn->query($routes_query);
                     <li class="nav-item">
                         <a class="nav-link" href="booking.php">Book Ticket</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="tracking.php">Track Bus</a>
-                    </li>
+                   
                     <li class="nav-item">
                         <a class="nav-link active" href="routes.php">Routes</a>
                     </li>

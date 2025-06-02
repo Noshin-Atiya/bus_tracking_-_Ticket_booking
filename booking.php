@@ -99,6 +99,10 @@ if (isset($_GET['route_id'])) {
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">Welcome, <?php echo $_SESSION['user_name']; ?></span>
+                <a class="nav-link" href="dashboard.php">Dashboard</a>
+    <a class="nav-link" href="tracking.php">
+        <i class="fas fa-satellite-dish"></i> Live Tracking
+    </a>
                 <a class="nav-link" href="logout.php">Logout</a>
             </div>
         </div>
