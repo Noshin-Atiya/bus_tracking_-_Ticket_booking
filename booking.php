@@ -13,67 +13,75 @@ $routes_result = $conn->query($routes_query);
 
 // Handle booking form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['book_ticket'])) {
-    $bus_id = $_POST['bus_id'];
-    $route_id = $_POST['route_id'];
+    $bus_id = (int)$_POST['bus_id'];
+    $route_id = (int)$_POST['route_id'];
     $passenger_name = sanitize($_POST['passenger_name']);
     $passenger_phone = sanitize($_POST['passenger_phone']);
     $seat_numbers = sanitize($_POST['seat_numbers']);
     $journey_date = $_POST['journey_date'];
     
-    // ✅ NEW: Check if seats are already booked
-    $seat_array = explode(',', $seat_numbers);
-    $booked_seats = [];
-    
-    foreach ($seat_array as $seat) {
-        $seat = trim($seat);
-        $check_query = "SELECT passenger_name FROM bookings 
-                       WHERE bus_id = ? AND journey_date = ? 
-                       AND FIND_IN_SET(?, REPLACE(seat_numbers, ' ', '')) > 0 
-                       AND status = 'confirmed'";
-        $check_stmt = $conn->prepare($check_query);
-        $check_stmt->bind_param("iss", $bus_id, $journey_date, $seat);
-        $check_stmt->execute();
-        $check_result = $check_stmt->get_result();
-        
-        if ($check_result->num_rows > 0) {
-            $existing_booking = $check_result->fetch_assoc();
-            $booked_seats[] = $seat . " (booked by " . $existing_booking['passenger_name'] . ")";
-        }
-    }
-    
-    // If any seat is already booked, show error
-    if (!empty($booked_seats)) {
-        $error = "❌ Sorry! These seats are already booked: " . implode(', ', $booked_seats) . ". Please select different seats.";
+    // Validate date
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $journey_date)) {
+        $error = "❌ Invalid date format";
     } else {
-        // Continue with normal booking process
-        // Get bus fare
-        $fare_query = "SELECT r.fare FROM routes r JOIN buses b ON r.id = b.route_id WHERE b.id = ?";
-        $fare_stmt = $conn->prepare($fare_query);
-        $fare_stmt->bind_param("i", $bus_id);
-        $fare_stmt->execute();
-        $fare_result = $fare_stmt->get_result();
-        $fare_row = $fare_result->fetch_assoc();
+        // Check if seats are already booked
+        $seat_array = array_map('trim', explode(',', $seat_numbers));
+        $booked_seats = [];
         
-        $seat_count = count($seat_array);
-        $total_fare = $fare_row['fare'] * $seat_count;
+        foreach ($seat_array as $seat) {
+            $check_query = "SELECT passenger_name FROM bookings 
+                           WHERE bus_id = ? AND journey_date = ? 
+                           AND FIND_IN_SET(?, REPLACE(seat_numbers, ' ', '')) > 0 
+                           AND status = 'confirmed'";
+            $check_stmt = $conn->prepare($check_query);
+            $check_stmt->bind_param("iss", $bus_id, $journey_date, $seat);
+            $check_stmt->execute();
+            $check_result = $check_stmt->get_result();
+            
+            if ($check_result->num_rows > 0) {
+                $existing_booking = $check_result->fetch_assoc();
+                $booked_seats[] = $seat . " (booked by " . $existing_booking['passenger_name'] . ")";
+            }
+        }
         
-        // Insert booking
-        $booking_stmt = $conn->prepare("INSERT INTO bookings (user_id, bus_id, route_id, passenger_name, passenger_phone, seat_numbers, total_fare, booking_date, journey_date) VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE(), ?)");
-        $booking_stmt->bind_param("iiisssds", $_SESSION['user_id'], $bus_id, $route_id, $passenger_name, $passenger_phone, $seat_numbers, $total_fare, $journey_date);
-        
-        if ($booking_stmt->execute()) {
-            $booking_id = $conn->insert_id;
-            $success = "✅ Booking confirmed! Your booking ID is: " . $booking_id . ". Seats: " . $seat_numbers;
+        if (!empty($booked_seats)) {
+            $error = "❌ Sorry! These seats are already booked: " . implode(', ', $booked_seats) . ". Please select different seats.";
         } else {
-            $error = "❌ Booking failed! Please try again.";
+            // Get bus fare
+            $fare_query = "SELECT r.fare FROM routes r JOIN buses b ON r.id = b.route_id WHERE b.id = ?";
+            $fare_stmt = $conn->prepare($fare_query);
+            $fare_stmt->bind_param("i", $bus_id);
+            $fare_stmt->execute();
+            $fare_result = $fare_stmt->get_result();
+            $fare_row = $fare_result->fetch_assoc();
+            
+            $seat_count = count($seat_array);
+            $total_fare = $fare_row['fare'] * $seat_count;
+            
+            // Insert booking
+            $booking_stmt = $conn->prepare("INSERT INTO bookings (user_id, bus_id, route_id, passenger_name, passenger_phone, seat_numbers, total_fare, booking_date, journey_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE(), ?, 'confirmed')");
+            $booking_stmt->bind_param("iiisssds", $_SESSION['user_id'], $bus_id, $route_id, $passenger_name, $passenger_phone, $seat_numbers, $total_fare, $journey_date);
+            
+            if ($booking_stmt->execute()) {
+                $booking_id = $conn->insert_id;
+                $success = "✅ Booking confirmed! Your booking ID is: " . $booking_id . ". Seats: " . $seat_numbers;
+                
+                // Clear selected seats from session if needed
+                unset($_SESSION['selected_seats']);
+            } else {
+                $error = "❌ Booking failed! Please try again.";
+            }
         }
     }
 }
 
 // Get buses for selected route
 if (isset($_GET['route_id'])) {
-    $route_id = $_GET['route_id'];
-    $buses_query = "SELECT b.*, r.route_name, r.from_city, r.to_city, r.fare FROM buses b JOIN routes r ON b.route_id = r.id WHERE b.route_id = ? AND b.status = 'active'";
+    $route_id = (int)$_GET['route_id'];
+    $buses_query = "SELECT b.*, r.route_name, r.from_city, r.to_city, r.fare 
+                    FROM buses b 
+                    JOIN routes r ON b.route_id = r.id 
+                    WHERE b.route_id = ? AND b.status = 'active'";
     $buses_stmt = $conn->prepare($buses_query);
     $buses_stmt->bind_param("i", $route_id);
     $buses_stmt->execute();
@@ -89,6 +97,62 @@ if (isset($_GET['route_id'])) {
     <title>Book Ticket - BD Bus Track</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .btn-seat {
+            width: 100%;
+            background-color: white;
+            border: 1px solid #dee2e6;
+            color: #212529;
+            padding: 8px 0;
+        }
+        
+        .btn-seat:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .btn-seat.selected {
+            background-color: #0d6efd;
+            color: white;
+            border-color: #0d6efd;
+        }
+        
+        .btn-seat.booked {
+            background-color: #dc3545;
+            color: white;
+            border-color: #dc3545;
+            cursor: not-allowed;
+        }
+        
+        .seat-grid .row {
+            margin-bottom: 8px;
+        }
+        
+        .seat-grid .badge {
+            width: 100%;
+            padding: 8px 0;
+        }
+        
+        #selectedSeatsDisplay {
+            min-height: 40px;
+            padding: 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+        }
+        
+        .card {
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -98,11 +162,11 @@ if (isset($_GET['route_id'])) {
                 <i class="fas fa-bus"></i> BD Bus Track
             </a>
             <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">Welcome, <?php echo $_SESSION['user_name']; ?></span>
+                <span class="navbar-text me-3">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
                 <a class="nav-link" href="dashboard.php">Dashboard</a>
-    <a class="nav-link" href="tracking.php">
-        <i class="fas fa-satellite-dish"></i> Live Tracking
-    </a>
+                <a class="nav-link" href="http://localhost:3000">
+                    <i class="fas fa-satellite-dish"></i> Live Tracking
+                </a>
                 <a class="nav-link" href="logout.php">Logout</a>
             </div>
         </div>
@@ -132,7 +196,7 @@ if (isset($_GET['route_id'])) {
                                 <option value="">Select a route</option>
                                 <?php while ($route = $routes_result->fetch_assoc()): ?>
                                     <option value="<?php echo $route['id']; ?>" <?php echo (isset($_GET['route_id']) && $_GET['route_id'] == $route['id']) ? 'selected' : ''; ?>>
-                                        <?php echo $route['from_city'] . ' → ' . $route['to_city'] . ' (৳' . $route['fare'] . ')'; ?>
+                                        <?php echo htmlspecialchars($route['from_city'] . ' → ' . $route['to_city'] . ' (৳' . $route['fare'] . ')'); ?>
                                     </option>
                                 <?php endwhile; ?>
                             </select>
@@ -157,11 +221,11 @@ if (isset($_GET['route_id'])) {
                     <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col-md-3">
-                                <h6><?php echo $bus['bus_name']; ?></h6>
-                                <small class="text-muted"><?php echo $bus['bus_number']; ?></small>
+                                <h6><?php echo htmlspecialchars($bus['bus_name']); ?></h6>
+                                <small class="text-muted"><?php echo htmlspecialchars($bus['bus_number']); ?></small>
                             </div>
                             <div class="col-md-2">
-                                <span class="badge bg-info"><?php echo $bus['bus_type']; ?></span>
+                                <span class="badge bg-info"><?php echo htmlspecialchars($bus['bus_type']); ?></span>
                             </div>
                             <div class="col-md-2">
                                 <small>Departure: <?php echo date('h:i A', strtotime($bus['departure_time'])); ?></small>
@@ -170,10 +234,10 @@ if (isset($_GET['route_id'])) {
                                 <small>Arrival: <?php echo date('h:i A', strtotime($bus['arrival_time'])); ?></small>
                             </div>
                             <div class="col-md-2">
-                                <strong>৳<?php echo $bus['fare']; ?></strong>
+                                <strong>৳<?php echo htmlspecialchars($bus['fare']); ?></strong>
                             </div>
                             <div class="col-md-1">
-                                <button class="btn btn-sm btn-success" onclick="selectBus(<?php echo $bus['id']; ?>, '<?php echo $bus['bus_name']; ?>', <?php echo $bus['fare']; ?>)">
+                                <button class="btn btn-sm btn-success" onclick="selectBus(<?php echo $bus['id']; ?>, '<?php echo addslashes($bus['bus_name']); ?>', <?php echo $bus['fare']; ?>)">
                                     Select
                                 </button>
                             </div>
@@ -193,7 +257,7 @@ if (isset($_GET['route_id'])) {
             <div class="card-body">
                 <form method="POST">
                     <input type="hidden" id="selected_bus_id" name="bus_id">
-                    <input type="hidden" name="route_id" value="<?php echo isset($_GET['route_id']) ? $_GET['route_id'] : ''; ?>">
+                    <input type="hidden" name="route_id" value="<?php echo isset($_GET['route_id']) ? (int)$_GET['route_id'] : ''; ?>">
                     
                     <div class="row">
                         <div class="col-md-6">
@@ -212,16 +276,21 @@ if (isset($_GET['route_id'])) {
                     
                     <div class="row">
                         <div class="col-md-6">
-                           <div class="mb-3">
-    <label for="journey_date" class="form-label">Journey Date</label>
-    <input type="date" class="form-control" id="journey_date" name="journey_date" 
-           min="<?php echo date('Y-m-d'); ?>" required onchange="checkSeatAvailability()">
-</div>
+                            <div class="mb-3">
+                                <label for="journey_date" class="form-label">Journey Date</label>
+                                <input type="date" class="form-control" id="journey_date" name="journey_date" 
+                                       min="<?php echo date('Y-m-d'); ?>" required onchange="checkSeatAvailability()">
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="seat_numbers" class="form-label">Seat Numbers (comma separated)</label>
-                                <input type="text" class="form-control" id="seat_numbers" name="seat_numbers" placeholder="e.g., A1, A2" required>
+                                <label for="seat_numbers" class="form-label">Seat Numbers</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="seat_numbers" name="seat_numbers" required readonly>
+                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#seatSelectionModal">
+                                        <i class="fas fa-chair"></i> Select Seats
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -241,50 +310,167 @@ if (isset($_GET['route_id'])) {
         </div>
     </div>
 
+    <!-- Seat Selection Modal -->
+    <div class="modal fade" id="seatSelectionModal" tabindex="-1" aria-labelledby="seatSelectionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="seatSelectionModalLabel">Select Your Seats</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="seat-grid mb-4 text-center">
+                        <div class="row mb-2">
+                            <div class="col-2"></div>
+                            <div class="col-2"><span class="badge bg-secondary">1</span></div>
+                            <div class="col-2"><span class="badge bg-secondary">2</span></div>
+                            <div class="col-2"><span class="badge bg-secondary">3</span></div>
+                            <div class="col-2"><span class="badge bg-secondary">4</span></div>
+                            <div class="col-2"><span class="badge bg-secondary">5</span></div>
+                        </div>
+                        
+                        <!-- Row Ex -->
+                        <div class="row mb-2">
+                            <div class="col-2"><span class="badge bg-secondary">Ex</span></div>
+                            <div class="col-2"><button type="button" class="btn btn-seat" data-seat="Ex1">1</button></div>
+                            <div class="col-2"><button type="button" class="btn btn-seat" data-seat="Ex2">2</button></div>
+                            <div class="col-2"><button type="button" class="btn btn-seat" data-seat="Ex3">3</button></div>
+                            <div class="col-2"></div>
+                            <div class="col-2"></div>
+                        </div>
+                        
+                        <!-- Rows A-I -->
+                        <?php 
+                        $rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+                        foreach ($rows as $row): ?>
+                        <div class="row mb-2">
+                            <div class="col-2"><span class="badge bg-secondary"><?= $row ?></span></div>
+                            <div class="col-2"><button type="button" class="btn btn-seat" data-seat="<?= $row ?>1">1</button></div>
+                            <div class="col-2"><button type="button" class="btn btn-seat" data-seat="<?= $row ?>2">2</button></div>
+                            <div class="col-2"><button type="button" class="btn btn-seat" data-seat="<?= $row ?>3">3</button></div>
+                            <div class="col-2"><button type="button" class="btn btn-seat" data-seat="<?= $row ?>4">4</button></div>
+                            <div class="col-2"></div>
+                        </div>
+                        <?php endforeach; ?>
+                        
+                        <!-- Row J -->
+                        <div class="row">
+                            <div class="col-2"><span class="badge bg-secondary">J</span></div>
+                            <div class="col-2"><button type="button" class="btn btn-seat" data-seat="J1">1</button></div>
+                            <div class="col-2"><button type="button" class="btn btn-seat" data-seat="J2">2</button></div>
+                            <div class="col-2"><button type="button" class="btn btn-seat" data-seat="J3">3</button></div>
+                            <div class="col-2"><button type="button" class="btn btn-seat" data-seat="J4">4</button></div>
+                            <div class="col-2"><button type="button" class="btn btn-seat" data-seat="J5">5</button></div>
+                        </div>
+                    </div>
+                    
+                    <div class="selected-seats mb-4">
+                        <strong>Selected Seats:</strong>
+                        <div id="selectedSeatsDisplay" class="p-2">No seats selected</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">GO BACK</button>
+                    <button type="button" class="btn btn-success" id="confirmSeatsBtn">DONE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Seat Selection Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle seat selection
+            document.querySelectorAll('.btn-seat').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (!this.classList.contains('booked')) {
+                        this.classList.toggle('selected');
+                        updateSelectedSeats();
+                    }
+                });
+            });
+
+            // Update selected seats display
+            function updateSelectedSeats() {
+                const selectedSeats = Array.from(document.querySelectorAll('.btn-seat.selected'))
+                    .map(seat => seat.dataset.seat);
+                const display = document.getElementById('selectedSeatsDisplay');
+                
+                if (selectedSeats.length > 0) {
+                    display.textContent = selectedSeats.join(', ');
+                    display.style.color = '#212529';
+                } else {
+                    display.textContent = 'No seats selected';
+                    display.style.color = '#6c757d';
+                }
+            }
+
+            // Confirm seats selection
+            document.getElementById('confirmSeatsBtn').addEventListener('click', function() {
+                const selectedSeats = Array.from(document.querySelectorAll('.btn-seat.selected'))
+                    .map(seat => seat.dataset.seat);
+                
+                if (selectedSeats.length > 0) {
+                    document.getElementById('seat_numbers').value = selectedSeats.join(', ');
+                    bootstrap.Modal.getInstance(document.getElementById('seatSelectionModal')).hide();
+                } else {
+                    alert('Please select at least one seat');
+                }
+            });
+
+            // Check seat availability when date changes
+            function checkSeatAvailability() {
+                const busId = document.getElementById('selected_bus_id').value;
+                const journeyDate = document.getElementById('journey_date').value;
+                
+                if (!busId || !journeyDate) return;
+                
+                fetch(`check_seats.php?bus_id=${busId}&journey_date=${journeyDate}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Reset all seats first
+                        document.querySelectorAll('.btn-seat').forEach(btn => {
+                            btn.classList.remove('booked', 'selected');
+                            btn.disabled = false;
+                        });
+                        
+                        // Mark booked seats as disabled and red
+                        if (data.booked_seats && data.booked_seats.length > 0) {
+                            const bookedSeats = data.booked_seats;
+                            
+                            document.querySelectorAll('.btn-seat').forEach(btn => {
+                                const seatNumber = btn.dataset.seat;
+                                if (bookedSeats.includes(seatNumber)) {
+                                    btn.classList.add('booked');
+                                    btn.disabled = true;
+                                    btn.classList.remove('selected');
+                                }
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking seat availability:', error);
+                    });
+            }
+
+            // Initialize the modal with seats when shown
+            document.getElementById('seatSelectionModal').addEventListener('show.bs.modal', function() {
+                checkSeatAvailability();
+            });
+        });
+
         function selectBus(busId, busName, fare) {
             document.getElementById('selected_bus_id').value = busId;
             document.getElementById('selected_bus_name').textContent = busName;
             document.getElementById('selected_bus_fare').textContent = fare;
             document.getElementById('bookingForm').style.display = 'block';
-            document.getElementById('bookingForm').scrollIntoView();
+            document.getElementById('bookingForm').scrollIntoView({ behavior: 'smooth' });
+            
+            // Clear previous selections
+            document.getElementById('seat_numbers').value = '';
+            document.getElementById('journey_date').value = '';
         }
-        // Check seat availability when bus and date are selected
-function checkSeatAvailability() {
-    const busId = document.getElementById('selected_bus_id').value;
-    const journeyDate = document.getElementById('journey_date').value;
-    
-    if (!busId || !journeyDate) return;
-    
-    // Show loading
-    const seatInput = document.getElementById('seat_numbers');
-    if (seatInput) {
-        seatInput.placeholder = "Checking availability...";
-        
-        // Fetch booked seats
-        fetch(`check_seats.php?bus_id=${busId}&journey_date=${journeyDate}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.booked_seats && data.booked_seats.length > 0) {
-                    seatInput.placeholder = `Available seats. Booked: ${data.booked_seats.join(', ')}`;
-                } else {
-                    seatInput.placeholder = "All seats available. e.g., A1, A2";
-                }
-            })
-            .catch(error => {
-                seatInput.placeholder = "e.g., A1, A2";
-            });
-    }
-}
-
-// Add event listener when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    const journeyDateInput = document.getElementById('journey_date');
-    if (journeyDateInput) {
-        journeyDateInput.addEventListener('change', checkSeatAvailability);
-    }
-});
     </script>
 </body>
 </html>

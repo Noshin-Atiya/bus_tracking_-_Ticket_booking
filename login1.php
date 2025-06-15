@@ -19,9 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $_SESSION['role'] = $user['role'];
         
         if ($user['role'] == 'admin') {
-            redirect('admin/dashboard.php');
+            redirect('http://localhost:3000');
         } else {
-            redirect('dashboard.php');
+            redirect('http://localhost:3000');
         }
     } else {
         $error = "Invalid email or password!";
@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </form>
                         
                         <div class="text-center mt-3">
-                            <p>Don't have an account? <a href="register.php">Register here</a></p>
+                            <p>Don't have an account? <a href="register1.php">Register here</a></p>
                             <p><a href="index.html">Back to Home</a></p>
                         </div>
                         
