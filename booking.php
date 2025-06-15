@@ -159,7 +159,7 @@ if (isset($_GET['route_id'])) {
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="index.html">
-                <i class="fas fa-bus"></i> BD Bus Track
+                <i class="fas fa-bus"></i> BD Bus Ticket Book & Track
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?></span>

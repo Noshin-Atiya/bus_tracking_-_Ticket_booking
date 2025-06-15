@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Register - BD Bus Track</title>
+    <title>Register - BD Bus Ticket book & Track</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 </head>
@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="col-md-6">
                 <div class="card shadow">
                     <div class="card-header bg-success text-white text-center">
-                        <h4><i class="fas fa-user-plus"></i> Register for BD Bus Track</h4>
+                        <h4><i class="fas fa-user-plus"></i> Register for BD Bus Ticket Book & Track</h4>
                     </div>
                     <div class="card-body">
                         <?php if (!empty($message)) echo $message; ?>
